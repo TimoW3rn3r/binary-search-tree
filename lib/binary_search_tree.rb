@@ -95,18 +95,32 @@ class Tree
     [node, previous_node, child]
   end
 
+  def find_next_greatest(node)
+    node = node.right_child
+    previous = node
+    while node.left_child
+      previous = node
+      node = node.left_child
+    end
+    previous.left_child = nil
+    node
+  end
+
   def delete(value)
     node, previous_node, child = search_for(value)
     if node.leaf?
-      delete_leaf_node(previous_node, child)
+      delete_leaf_node(node, previous_node, child)
     elsif node.single_child?
       delete_single_child_node(node, previous_node, child)
     else
-      puts 'double child case'
+      delete_double_child_node(node, previous_node, child)
     end
+    node
   end
 
-  def delete_leaf_node(previous_node, child)
+  def delete_leaf_node(node, previous_node, child)
+    return @root = nil if node == @root
+
     case child
     when :left
       previous_node.left_child = nil
@@ -116,12 +130,27 @@ class Tree
   end
 
   def delete_single_child_node(node, previous_node, child)
-    case child
-    when :left
-      previous_node.left_child = node.left_child || node.right_child
-    when :right
-      previous_node.right_child = node.left_child || node.right_child
+    if node == @root
+      @root = node.left_child || node.right_child
+    else
+      case child
+      when :left
+        previous_node.left_child = node.left_child || node.right_child
+      when :right
+        previous_node.right_child = node.left_child || node.right_child
+      end
     end
+  end
+
+  def delete_double_child_node(node, previous_node, child)
+    next_greatest = find_next_greatest(node)
+    if node == @root
+      @root = next_greatest
+    else
+      child == :left ? previous_node.left_child = next_greatest : previous_node.right_child = next_greatest
+    end
+    next_greatest.left_child = node.left_child
+    next_greatest.right_child = node.right_child if node.right_child != next_greatest
   end
 
   def to_s(node = @root, prefix = '', is_left = true)
@@ -129,13 +158,10 @@ class Tree
     puts "#{prefix}#{is_left ? '└── ' : '┌── '}#{node.value}"
     to_s(node.left_child, "#{prefix}#{is_left ? '    ' : '│   '}", true) if node.left_child
   end
-
 end
 
-tree = Tree.new([5, 6, 2, 4, 1, 9, 0, 8, 5, 6, 4, 3])
+array = 1..9
+tree = Tree.new(array)
 require 'pry-byebug'
 binding.pry
-tree.insert(3.5)
-tree.delete(9)
-tree.to_s
 puts 'done'

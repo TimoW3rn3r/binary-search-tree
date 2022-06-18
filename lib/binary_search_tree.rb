@@ -1,12 +1,6 @@
 module Comparable
   def compare(node)
-    if node.value > value
-      1
-    elsif node.value < value
-      -1
-    else
-      0
-    end
+    node.value <=> value
   end
 end
 
@@ -27,6 +21,13 @@ class Node
 
   def single_child?
     !leaf? && (left_child.nil? || right_child.nil?)
+  end
+
+  def children
+    array = []
+    array << @left_child unless @left_child.nil?
+    array << @right_child unless @right_child.nil?
+    array
   end
 end
 
@@ -95,6 +96,11 @@ class Tree
     [node, previous_node, child]
   end
 
+  def find(value)
+    node, previous_node, child = search_for(value)
+    node
+  end
+
   def find_next_greatest(node)
     node = node.right_child
     previous = node
@@ -153,6 +159,30 @@ class Tree
     next_greatest.right_child = node.right_child if node.right_child != next_greatest
   end
 
+  def level_block
+    values = []
+    queue = [@root]
+    until queue.empty?
+      values << queue[0].value
+      yield queue[0] if block_given?
+      queue += queue[0].children
+      queue.shift
+    end
+    block_given? ? nil : values
+  end
+
+  def level_block_rec(queue = [@root], values = nil, &block)
+    return if queue.empty?
+
+    values ||= []
+    block.call(queue[0]) if block_given?
+    queue += queue[0].children
+    values << queue[0].value
+    queue.shift
+    level_block_rec(queue, values, &block)
+    values unless block_given?
+  end
+
   def to_s(node = @root, prefix = '', is_left = true)
     to_s(node.right_child, "#{prefix}#{is_left ? '│   ' : '    '}", false) if node.right_child
     puts "#{prefix}#{is_left ? '└── ' : '┌── '}#{node.value}"
@@ -163,5 +193,6 @@ end
 array = 1..9
 tree = Tree.new(array)
 require 'pry-byebug'
-binding.pry
+# binding.pry
+p tree.level_block_rec { |node| puts "Node: #{node.value**2}" }
 puts 'done'

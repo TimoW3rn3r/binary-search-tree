@@ -6,8 +6,7 @@ end
 
 class Node
   include Comparable
-  attr_accessor :left_child, :right_child
-  attr_reader :value
+  attr_accessor :left_child, :right_child, :value
 
   def initialize(value)
     @value = value
@@ -22,18 +21,10 @@ class Node
   def single_child?
     !leaf? && (left_child.nil? || right_child.nil?)
   end
-
-  def children
-    array = []
-    array << @left_child unless @left_child.nil?
-    array << @right_child unless @right_child.nil?
-    array
-  end
 end
 
 class Tree
   attr_reader :root
-  attr_accessor :array
 
   def initialize(array)
     @root = build_tree(array.uniq.sort)
@@ -46,149 +37,82 @@ class Tree
     mid_element = array[length / 2]
     node = Node.new(mid_element)
     node.left_child = build_tree(array[0...length / 2])
-    node.right_child = build_tree(array[(length / 2 + 1)..-1])
+    node.right_child = build_tree(array[(length / 2 + 1)..])
     node
   end
 
-  def insert(value)
-    new_node = Node.new(value)
-    cursor = @root
-    loop do
-      case cursor.compare(new_node)
-      when 1
-        if cursor.right_child.nil?
-          cursor.right_child = new_node
-          break
-        else
-          cursor = cursor.right_child
-        end
-      when -1
-        if cursor.left_child.nil?
-          cursor.left_child = new_node
-          break
-        else
-          cursor = cursor.left_child
-        end
-      else
-        puts 'Number already in the tree'
-        return cursor
-      end
-    end
-    new_node
-  end
+  def insert(value, node = @root)
+    return nil if node.value == value
 
-  def search_for(value)
-    node = @root
-    previous_node = @root
-    child = :left
-    loop do
-      case node.value <=> value
-      when 1
-        previous_node = node
-        child = :left
-        node = node.left_child
-      when -1
-        previous_node = node
-        child = :right
-        node = node.right_child
-      else
-        break
-      end
-    end
-    [node, previous_node, child]
-  end
-
-  def find(value)
-    node, previous_node, child = search_for(value)
-    node
-  end
-
-  def find_next_greatest(node)
-    node = node.right_child
-    previous = node
-    while node.left_child
-      previous = node
-      node = node.left_child
-    end
-    previous.left_child = nil
-    node
-  end
-
-  def delete(value)
-    node, previous_node, child = search_for(value)
-    if node.leaf?
-      delete_leaf_node(node, previous_node, child)
-    elsif node.single_child?
-      delete_single_child_node(node, previous_node, child)
+    if value < node.value
+      node.left_child.nil? ? node.left_child = Node.new(value) : insert(value, node.left_child)
     else
-      delete_double_child_node(node, previous_node, child)
+      node.right_child.nil? ? node.right_child = Node.new(value) : insert(value, node.right_child)
+    end
+  end
+
+  def delete(value, node = root)
+    return node if node.nil?
+
+    if value < node.value
+      node.left_child = delete(value, node.left_child)
+    elsif value > node.value
+      node.right_child = delete(value, node.right_child)
+    else
+      if node == root
+        return @root = node.right_child if node.left_child.nil?
+
+        return @root = node.left_child if node.right_child.nil?
+      end
+      return node.right_child if node.left_child.nil?
+      return node.left_child if node.right_child.nil?
+
+      leftmost_node = leftmost_leaf(node.right_child)
+      node.value = leftmost_node.value
+      node.right_child = delete(leftmost_node.value, node.right_child)
     end
     node
   end
 
-  def delete_leaf_node(node, previous_node, child)
-    return @root = nil if node == @root
-
-    case child
-    when :left
-      previous_node.left_child = nil
-    when :right
-      previous_node.right_child = nil
-    end
+  def leftmost_leaf(node)
+    node = node.left_child until node.left_child.nil?
+    puts "leftmost is #{node.value}"
+    node
   end
 
-  def delete_single_child_node(node, previous_node, child)
-    if node == @root
-      @root = node.left_child || node.right_child
-    else
-      case child
-      when :left
-        previous_node.left_child = node.left_child || node.right_child
-      when :right
-        previous_node.right_child = node.left_child || node.right_child
-      end
-    end
-  end
+  def find(value, node = root)
+    return node if node.nil? || node.value == value
 
-  def delete_double_child_node(node, previous_node, child)
-    next_greatest = find_next_greatest(node)
-    if node == @root
-      @root = next_greatest
-    else
-      child == :left ? previous_node.left_child = next_greatest : previous_node.right_child = next_greatest
-    end
-    next_greatest.left_child = node.left_child
-    next_greatest.right_child = node.right_child if node.right_child != next_greatest
+    value < node.value ? find(value, node.left_child) : find(value, node.right_child)
   end
 
   def level_order
     values = []
-    queue = [@root]
+    queue = [root]
     until queue.empty?
-      values << queue[0].value
-      yield queue[0] if block_given?
-      queue += queue[0].children
-      queue.shift
+      shifted = queue.shift
+      values << shifted.value
+      yield shifted if block_given?
+      queue << shifted.left_child unless shifted.left_child.nil?
+      queue << shifted.right_child unless shifted.right_child.nil?
     end
     block_given? ? nil : values
   end
 
-  def level_order_rec(queue = [@root], values = nil, &block)
+  def level_order_rec(queue = [root], values = [], &block)
     return if queue.empty?
 
-    values ||= []
-    block.call(queue[0]) if block_given?
-    queue += queue[0].children
-    values << queue[0].value
-    queue.shift
+    shifted = queue.shift
+    values << shifted.value
+    block.call(shifted) if block_given?
+    queue << shifted.left_child unless shifted.left_child.nil?
+    queue << shifted.right_child unless shifted.right_child.nil?
     level_order_rec(queue, values, &block)
     values unless block_given?
   end
 
-  def preorder(node = @root, values = nil, &block)
+  def preorder(node = root, values = [], &block)
     return unless node
-
-    values ||= []
 
     values.append(node.value)
     block.call(node) if block_given?
@@ -198,10 +122,8 @@ class Tree
     values unless block_given?
   end
 
-  def inorder(node = @root, values = nil, &block)
+  def inorder(node = root, values = [], &block)
     return unless node
-
-    values ||= []
 
     inorder(node.left_child, values, &block)
     values.append(node.value)
@@ -211,10 +133,8 @@ class Tree
     values unless block_given?
   end
 
-  def postorder(node = @root, values = nil, &block)
+  def postorder(node = root, values = [], &block)
     return unless node
-
-    values ||= []
 
     postorder(node.left_child, values, &block)
     postorder(node.right_child, values, &block)
@@ -230,14 +150,14 @@ class Tree
     [1 + height(node.left_child), 1 + height(node.right_child)].max
   end
 
-  def depth(node, cursor = @root)
+  def depth(node, cursor = root)
     return 0 if cursor.nil? || node == cursor
 
     1 + (cursor.compare(node).positive? ? depth(node, cursor.right_child) : depth(node, cursor.left_child))
   end
 
   def balanced?
-    level_order do |node| 
+    level_order do |node|
       return false if height(node.left_child) - height(node.right_child) > 1
     end
     true
@@ -253,15 +173,3 @@ class Tree
     to_s(node.left_child, "#{prefix}#{is_left ? '    ' : '│   '}", true) if node.left_child
   end
 end
-
-tree = Tree.new (Array.new(15) { rand(1..100) })
-puts tree
-p tree.balanced?
-p tree.level_order, tree.preorder, tree.inorder, tree.postorder
-10.times { tree.insert((rand * 200).to_i) }
-puts tree
-p tree.balanced?
-tree.rebalance
-puts tree
-p tree.balanced?
-p tree.level_order, tree.preorder, tree.inorder, tree.postorder

@@ -70,9 +70,11 @@ class Tree
           cursor = cursor.left_child
         end
       else
-        return puts 'Number already in the tree'
+        puts 'Number already in the tree'
+        return cursor
       end
     end
+    new_node
   end
 
   def search_for(value)
@@ -200,7 +202,7 @@ class Tree
     return unless node
 
     values ||= []
-    
+
     inorder(node.left_child, values, &block)
     values.append(node.value)
     block.call(node) if block_given?
@@ -213,7 +215,7 @@ class Tree
     return unless node
 
     values ||= []
-    
+
     postorder(node.left_child, values, &block)
     postorder(node.right_child, values, &block)
     values.append(node.value)
@@ -222,19 +224,21 @@ class Tree
     values unless block_given?
   end
 
+  def height(node)
+    return 0 if node.nil? || node.leaf?
+
+    [1 + height(node.left_child), 1 + height(node.right_child)].max
+  end
+
+  def depth(node, cursor = @root)
+    return 0 if cursor.nil? || node == cursor
+
+    1 + (cursor.compare(node).positive? ? depth(node, cursor.right_child) : depth(node, cursor.left_child))
+  end
+
   def to_s(node = @root, prefix = '', is_left = true)
     to_s(node.right_child, "#{prefix}#{is_left ? '│   ' : '    '}", false) if node.right_child
     puts "#{prefix}#{is_left ? '└── ' : '┌── '}#{node.value}"
     to_s(node.left_child, "#{prefix}#{is_left ? '    ' : '│   '}", true) if node.left_child
   end
 end
-
-array = 1..9
-array = Array.new(10) { (rand * 50).to_i }
-tree = Tree.new(array)
-require 'pry-byebug'
-# binding.pry
-puts tree
-p tree.postorder
-p(tree.postorder { |node| puts "Node: #{node.value}" })
-puts 'done'

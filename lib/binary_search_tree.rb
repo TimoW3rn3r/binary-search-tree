@@ -161,7 +161,7 @@ class Tree
     next_greatest.right_child = node.right_child if node.right_child != next_greatest
   end
 
-  def level_block
+  def level_order
     values = []
     queue = [@root]
     until queue.empty?
@@ -173,7 +173,7 @@ class Tree
     block_given? ? nil : values
   end
 
-  def level_block_rec(queue = [@root], values = nil, &block)
+  def level_order_rec(queue = [@root], values = nil, &block)
     return if queue.empty?
 
     values ||= []
@@ -181,7 +181,7 @@ class Tree
     queue += queue[0].children
     values << queue[0].value
     queue.shift
-    level_block_rec(queue, values, &block)
+    level_order_rec(queue, values, &block)
     values unless block_given?
   end
 
@@ -236,9 +236,32 @@ class Tree
     1 + (cursor.compare(node).positive? ? depth(node, cursor.right_child) : depth(node, cursor.left_child))
   end
 
+  def balanced?
+    level_order do |node| 
+      return false if height(node.left_child) - height(node.right_child) > 1
+    end
+    true
+  end
+
+  def rebalance
+    @root = build_tree(level_order.sort)
+  end
+
   def to_s(node = @root, prefix = '', is_left = true)
     to_s(node.right_child, "#{prefix}#{is_left ? '│   ' : '    '}", false) if node.right_child
     puts "#{prefix}#{is_left ? '└── ' : '┌── '}#{node.value}"
     to_s(node.left_child, "#{prefix}#{is_left ? '    ' : '│   '}", true) if node.left_child
   end
 end
+
+tree = Tree.new (Array.new(15) { rand(1..100) })
+puts tree
+p tree.balanced?
+p tree.level_order, tree.preorder, tree.inorder, tree.postorder
+10.times { tree.insert((rand * 200).to_i) }
+puts tree
+p tree.balanced?
+tree.rebalance
+puts tree
+p tree.balanced?
+p tree.level_order, tree.preorder, tree.inorder, tree.postorder

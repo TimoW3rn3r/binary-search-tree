@@ -183,6 +183,45 @@ class Tree
     values unless block_given?
   end
 
+  def preorder(node = @root, values = nil, &block)
+    return unless node
+
+    values ||= []
+
+    values.append(node.value)
+    block.call(node) if block_given?
+    preorder(node.left_child, values, &block)
+    preorder(node.right_child, values, &block)
+
+    values unless block_given?
+  end
+
+  def inorder(node = @root, values = nil, &block)
+    return unless node
+
+    values ||= []
+    
+    inorder(node.left_child, values, &block)
+    values.append(node.value)
+    block.call(node) if block_given?
+    inorder(node.right_child, values, &block)
+
+    values unless block_given?
+  end
+
+  def postorder(node = @root, values = nil, &block)
+    return unless node
+
+    values ||= []
+    
+    postorder(node.left_child, values, &block)
+    postorder(node.right_child, values, &block)
+    values.append(node.value)
+    block.call(node) if block_given?
+
+    values unless block_given?
+  end
+
   def to_s(node = @root, prefix = '', is_left = true)
     to_s(node.right_child, "#{prefix}#{is_left ? '│   ' : '    '}", false) if node.right_child
     puts "#{prefix}#{is_left ? '└── ' : '┌── '}#{node.value}"
@@ -191,8 +230,11 @@ class Tree
 end
 
 array = 1..9
+array = Array.new(10) { (rand * 50).to_i }
 tree = Tree.new(array)
 require 'pry-byebug'
 # binding.pry
-p tree.level_block_rec { |node| puts "Node: #{node.value**2}" }
+puts tree
+p tree.postorder
+p(tree.postorder { |node| puts "Node: #{node.value}" })
 puts 'done'
